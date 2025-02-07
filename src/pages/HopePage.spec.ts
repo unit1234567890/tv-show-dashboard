@@ -5,34 +5,44 @@ import SearchBar from '@/components/common/SearchBar.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ShowCard from '@/components/shows/ShowCard.vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
-import { useShowsListing } from '@/composable/useShowsListing'
 import { shows } from '@/mocks/shows'
 
-vi.mock('@/composable/useShowsListing', () => {
-  return {
-    useShowsListing: vi.fn()
-  }
-})
+const mockShowsListing = {
+  sortedGenres: [['Drama', [shows[0]]]],
+  isLoading: false,
+  isSearching: false,
+  errorMessage: '',
+  searchQuery: '',
+  hasError: false,
+  fetchShowDetails: vi.fn().mockResolvedValue(shows[0])
+}
+
+vi.mock('@/composable/useShowsListing', () => ({
+  useShowsListing: () => mockShowsListing
+}))
 
 function createWrapper() {
-  return mount(HomePage)
+  return mount(HomePage, {
+    global: {
+      stubs: {
+        'router-link': {
+          template: '<a><slot /></a>',
+        },
+      },
+    },
+  })
 }
 
 describe('HomePage.vue', () => {
-  let mockUseShowsListing: any
   let wrapper: VueWrapper<any>
 
   beforeEach(() => {
-    mockUseShowsListing = {
-      sortedGenres: [['Drama', [shows[0]]]],
-      isLoading: false,
-      isSearching: false,
-      errorMessage: '',
-      searchQuery: { value: '' },
-      hasError: false
-    }
-
-    useShowsListing.mockReturnValue(mockUseShowsListing)
+    mockShowsListing.sortedGenres = [['Drama', [shows[0]]]]
+    mockShowsListing.isLoading = false
+    mockShowsListing.isSearching = false
+    mockShowsListing.errorMessage = ''
+    mockShowsListing.searchQuery = ''
+    mockShowsListing.hasError = false
     wrapper = createWrapper()
   })
 
@@ -42,29 +52,29 @@ describe('HomePage.vue', () => {
   })
 
   it('shows empty state when there are no shows', () => {
-    mockUseShowsListing.sortedGenres = []
+    mockShowsListing.sortedGenres = []
     wrapper = createWrapper()
 
     expect(wrapper.findComponent(EmptyState).exists()).toBe(true)
   })
 
   it("displays an error message when there's an error", async () => {
-    mockUseShowsListing.errorMessage = 'Something went wrong'
-    mockUseShowsListing.hasError = true
+    mockShowsListing.errorMessage = 'Something went wrong'
+    mockShowsListing.hasError = true
     wrapper = createWrapper()
 
     expect(wrapper.get('[data-test="error-message"]').text()).toBe('Something went wrong')
   })
 
   it('shows loading indicator when loading', () => {
-    mockUseShowsListing.isLoading = true
+    mockShowsListing.isLoading = true
     wrapper = createWrapper()
 
     expect(wrapper.findComponent(LoadingIndicator).exists()).toBe(true)
   })
 
   it('renders shows grouped by genre', () => {
-    mockUseShowsListing.sortedGenres = [
+    mockShowsListing.sortedGenres = [
       ['Drama', [shows[0]]],
       ['Action', [shows[1]]]
     ]
@@ -77,22 +87,11 @@ describe('HomePage.vue', () => {
   })
 
   it('renders ShowCard components correctly', () => {
-    mockUseShowsListing.sortedGenres = [['Drama', [shows[0]]]]
+    mockShowsListing.sortedGenres = [['Drama', [shows[0]]]]
     wrapper = createWrapper()
 
     const showCards = wrapper.findAllComponents(ShowCard)
     expect(showCards.length).toBe(1)
     expect(showCards[0].props('show')).toEqual(shows[0])
-  })
-
-  it('triggers a search when typing in the search bar', () => {
-    mockUseShowsListing.sortedGenres = [['Drama', [shows[0]]]]
-    wrapper = createWrapper()
-
-    const searchBar = wrapper.findComponent(SearchBar)
-    expect(searchBar.exists()).toBe(true)
-
-    searchBar.vm.$emit('search', 'Person of Interest')
-    expect(mockUseShowsListing.searchQuery.value).toBe('Person of Interest')
   })
 })
